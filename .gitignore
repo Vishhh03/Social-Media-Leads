@@ -1,0 +1,56 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+# Test binary
+*.test
+# Go coverage
+*.out
+*.prof
+# Go build
+backend/main
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+build/
+frontend/build/
+.npm
+*.log
+
+# Vendor (if used)
+# vendor/
+
+# Environment
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.jks
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Docker volumes data
+pgdata/
+redisdata/
+
+# Tmp
+tmp/
