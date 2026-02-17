@@ -13,8 +13,13 @@ import (
 
 func main() {
 	// Load .env file (optional, mainly for local dev)
+	// Try loading from current dir, then parent, then grandparent (project root)
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, reading from environment")
+		if err := godotenv.Load("../.env"); err != nil {
+			if err := godotenv.Load("../../.env"); err != nil {
+				log.Println("No .env file found in ., .., or ../.., reading from environment")
+			}
+		}
 	}
 
 	// Load configuration

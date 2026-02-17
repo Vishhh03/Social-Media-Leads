@@ -9,6 +9,8 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	FullName     string    `json:"full_name"`
 	CompanyName  string    `json:"company_name,omitempty"`
+	GoogleID     string    `json:"google_id,omitempty"`
+	AvatarURL    string    `json:"avatar_url,omitempty"`
 	Plan         string    `json:"plan"`
 	IsActive     bool      `json:"is_active"`
 	CreatedAt    time.Time `json:"created_at"`

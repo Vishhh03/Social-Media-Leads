@@ -10,9 +10,11 @@
 CREATE TABLE IF NOT EXISTS users (
     id            BIGSERIAL PRIMARY KEY,
     email         VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL DEFAULT '',
     full_name     VARCHAR(255) NOT NULL,
     company_name  VARCHAR(255) DEFAULT '',
+    google_id     VARCHAR(255) DEFAULT '',
+    avatar_url    TEXT DEFAULT '',
     plan          VARCHAR(50) NOT NULL DEFAULT 'starter',
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -20,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_google_id ON users(google_id) WHERE google_id != '';
 
 -- ========================
 -- Channels (WA / IG / FB)

@@ -17,9 +17,14 @@ func SetupRouter(cfg *config.Config, storage *store.Storage, redisClient *cache.
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
+		origin := c.GetHeader("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		c.Header("Access-Control-Allow-Origin", origin)
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Credentials", "true")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
@@ -33,7 +38,7 @@ func SetupRouter(cfg *config.Config, storage *store.Storage, redisClient *cache.
 		c.JSON(200, gin.H{
 			"status":  "ok",
 			"service": "lead-automation-api",
-			"version": "0.3.0",
+			"version": "0.4.0",
 			"redis":   redisOk,
 		})
 	})
@@ -44,6 +49,11 @@ func SetupRouter(cfg *config.Config, storage *store.Storage, redisClient *cache.
 
 	// Initialize handlers
 	authHandler := &handlers.AuthHandler{Store: storage, JWTSecret: cfg.JWT.Secret}
+	oauthHandler := handlers.NewOAuthHandler(
+		storage, cfg.JWT.Secret,
+		cfg.Google.ClientID, cfg.Google.ClientSecret, cfg.Google.RedirectURL,
+		cfg.FrontendURL,
+	)
 	webhookHandler := &handlers.WebhookHandler{Store: storage, Config: cfg, MetaClient: metaClient}
 	inboxHandler := &handlers.InboxHandler{Store: storage, MetaClient: metaClient}
 	automationHandler := &handlers.AutomationHandler{Store: storage}
@@ -58,6 +68,8 @@ func SetupRouter(cfg *config.Config, storage *store.Storage, redisClient *cache.
 		{
 			auth.POST("/signup", authHandler.Signup)
 			auth.POST("/login", authHandler.Login)
+			auth.GET("/google", oauthHandler.GoogleLogin)
+			auth.GET("/google/callback", oauthHandler.GoogleCallback)
 		}
 
 		// Meta Webhooks (public, verified by Meta token)

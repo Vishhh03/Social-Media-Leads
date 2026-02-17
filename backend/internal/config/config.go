@@ -7,13 +7,22 @@ import (
 
 // Config holds all configuration for the application.
 type Config struct {
-	AppPort  string
-	AppEnv   string
-	GinMode  string
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	Meta     MetaConfig
+	AppPort     string
+	AppEnv      string
+	GinMode     string
+	FrontendURL string
+	Database    DatabaseConfig
+	Redis       RedisConfig
+	JWT         JWTConfig
+	Meta        MetaConfig
+	Google      GoogleOAuthConfig
+}
+
+// GoogleOAuthConfig holds Google OAuth2 settings.
+type GoogleOAuthConfig struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
 }
 
 // DatabaseConfig holds database connection settings.
@@ -51,9 +60,10 @@ type MetaConfig struct {
 // Load reads configuration from environment variables.
 func Load() *Config {
 	cfg := &Config{
-		AppPort: getEnv("APP_PORT", "8080"),
-		AppEnv:  getEnv("APP_ENV", "development"),
-		GinMode: getEnv("GIN_MODE", "debug"),
+		AppPort:     getEnv("APP_PORT", "8080"),
+		AppEnv:      getEnv("APP_ENV", "development"),
+		GinMode:     getEnv("GIN_MODE", "debug"),
+		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "5432"),
@@ -76,6 +86,11 @@ func Load() *Config {
 			VerifyToken:     getEnv("META_VERIFY_TOKEN", ""),
 			PageAccessToken: getEnv("META_PAGE_ACCESS_TOKEN", ""),
 			WhatsAppToken:   getEnv("META_WHATSAPP_TOKEN", ""),
+		},
+		Google: GoogleOAuthConfig{
+			ClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
+			ClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+			RedirectURL:  getEnv("GOOGLE_REDIRECT_URL", "http://localhost:8080/api/v1/auth/google/callback"),
 		},
 	}
 

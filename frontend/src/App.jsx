@@ -11,6 +11,7 @@ import Automations from './pages/Automations';
 import Channels from './pages/Channels';
 import Broadcasts from './pages/Broadcasts';
 import Settings from './pages/Settings';
+import OAuthCallback from './pages/OAuthCallback';
 
 function ProtectedRoute({ children }) {
     return isAuthenticated() ? children : <Navigate to="/login" />;
@@ -23,6 +24,7 @@ export default function App() {
                 <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
+                    <Route path="/oauth/callback" element={<OAuthCallback />} />
                     <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                         <Route index element={<Dashboard />} />
                         <Route path="inbox" element={<Inbox />} />
