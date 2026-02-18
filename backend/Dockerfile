@@ -24,12 +24,24 @@ RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
+# Create a non-root user
+RUN adduser -D -g '' appuser
+
 # Copy binary from builder
 COPY --from=builder /build/server .
 
 # Copy migrations
 COPY --from=builder /build/internal/store/migrations ./internal/store/migrations
 
+# Set ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
 EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 CMD ["./server"]
