@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/social-media-lead/backend/internal/ai"
 	"github.com/social-media-lead/backend/internal/api/handlers"
 	"github.com/social-media-lead/backend/internal/api/middleware"
 	"github.com/social-media-lead/backend/internal/cache"
@@ -59,6 +60,10 @@ func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.Red
 	automationHandler := &handlers.AutomationHandler{Store: storage}
 	channelHandler := &handlers.ChannelHandler{Store: storage, TokenRefresher: tokenRefresher}
 	broadcastHandler := &handlers.BroadcastHandler{Store: storage, MetaClient: metaClient, Redis: redisClient}
+
+	// AI Orchestrator Client
+	llmClient := ai.NewOpenAIClient(cfg.OpenAI.APIKey, "")
+	aiHandler := &handlers.AIHandler{LLMClient: llmClient}
 
 	// --- Public Routes ---
 	v1 := r.Group("/api/v1")
@@ -120,6 +125,12 @@ func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.Red
 			broadcasts.GET("", broadcastHandler.ListBroadcasts)
 			broadcasts.POST("", broadcastHandler.CreateBroadcast)
 			broadcasts.POST("/:id/send", broadcastHandler.SendBroadcast)
+		}
+
+		// Workflows
+		workflows := protected.Group("/workflows")
+		{
+			workflows.POST("/generate", aiHandler.GenerateWorkflow)
 		}
 	}
 

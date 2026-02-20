@@ -11,6 +11,7 @@ import Automations from './pages/Automations';
 import Channels from './pages/Channels';
 import Broadcasts from './pages/Broadcasts';
 import Settings from './pages/Settings';
+import WorkflowBuilder from './pages/WorkflowBuilder';
 import OAuthCallback from './pages/OAuthCallback';
 
 function ProtectedRoute({ children }) {
@@ -32,6 +33,7 @@ export default function App() {
                         <Route path="automations" element={<Automations />} />
                         <Route path="channels" element={<Channels />} />
                         <Route path="broadcasts" element={<Broadcasts />} />
+                        <Route path="workflows" element={<WorkflowBuilder />} />
                         <Route path="settings" element={<Settings />} />
                     </Route>
                 </Routes>

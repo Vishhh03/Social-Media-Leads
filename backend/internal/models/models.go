@@ -97,3 +97,46 @@ type Broadcast struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
+
+// ============================================
+// AI & Orchestrator Models
+// ============================================
+
+// KnowledgeBase represents a document chunk used for RAG
+type KnowledgeBase struct {
+	ID        int64     `json:"id"`
+	UserID    int64     `json:"user_id"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	// Note: We don't expose the 'embedding' float32 array in standard JSON responses
+	// to save bandwidth, unless specifically requested.
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Workflow represents the Blueprint (DAG) of an automation
+type Workflow struct {
+	ID          int64     `json:"id"`
+	UserID      int64     `json:"user_id"`
+	Name        string    `json:"name"`
+	TriggerType string    `json:"trigger_type"` // e.g., 'meta_dm_received'
+	Status      string    `json:"status"`       // "draft", "published"
+	Prompt      string    `json:"prompt,omitempty"` // Original AI prompt if generated
+	// Nodes and Edges are stored as JSONB in DB, we use generic map/interfaces or raw JSON here
+	Nodes       []byte    `json:"nodes"` 
+	Edges       []byte    `json:"edges"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// WorkflowExecution represents the runtime state of a specific Lead passing through a Workflow
+type WorkflowExecution struct {
+	ID            int64     `json:"id"`
+	WorkflowID    int64     `json:"workflow_id"`
+	ContactID     int64     `json:"contact_id"`
+	CurrentNodeID string    `json:"current_node_id"`
+	Status        string    `json:"status"` // "running", "waiting", "completed", "failed"
+	StateData     []byte    `json:"state_data"` // Context payload (JSONB)
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}

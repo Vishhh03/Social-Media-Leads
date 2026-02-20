@@ -1086,3 +1086,134 @@ a:hover {
     transform: translateX(0);
   }
 }
+
+/* ============================================
+   Workflow Builder (React Flow)
+   ============================================ */
+.workflow-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: calc(100vh - 40px);
+  position: relative;
+}
+
+.workflow-header {
+  padding: 16px 28px;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.workflow-header-title {
+  font-size: var(--text-lg);
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.workflow-toolbar {
+  display: flex;
+  gap: 10px;
+  width: 400px;
+}
+
+.workflow-canvas {
+  flex: 1;
+  width: 100%;
+  background: var(--bg-secondary);
+  position: relative;
+}
+
+/* Custom Node Styles */
+.node-card {
+  background: var(--white);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 260px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.node-header {
+  padding: 6px 12px;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.node-header-trigger {
+  background: var(--success);
+}
+
+.node-header-action {
+  background: var(--accent);
+}
+
+.node-header-ai {
+  background: var(--warning);
+}
+
+/* using warning (orange/amber) for AI, or #d946ef fuchsia */
+
+.node-header-ai.fuchsia {
+  background: #d946ef;
+}
+
+.node-body {
+  padding: 16px;
+}
+
+.node-title {
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.node-desc {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.node-prompt {
+  margin-top: 12px;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-family: monospace;
+  color: #c026d3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node-handle {
+  width: 12px !important;
+  height: 12px !important;
+  border-width: 2px !important;
+  border-color: var(--white) !important;
+}
+
+.node-handle-trigger {
+  background: var(--success) !important;
+}
+
+.node-handle-action {
+  background: var(--accent) !important;
+}
+
+.node-handle-ai {
+  background: #d946ef !important;
+}

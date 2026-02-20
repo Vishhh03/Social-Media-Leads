@@ -16,6 +16,12 @@ type Config struct {
 	JWT         JWTConfig
 	Meta        MetaConfig
 	Google      GoogleOAuthConfig
+	OpenAI      OpenAIConfig
+}
+
+// OpenAIConfig holds LLM API keys.
+type OpenAIConfig struct {
+	APIKey string
 }
 
 // GoogleOAuthConfig holds Google OAuth2 settings.
@@ -91,6 +97,9 @@ func Load() *Config {
 			ClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 			ClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 			RedirectURL:  getEnv("GOOGLE_REDIRECT_URL", "http://localhost:8080/api/v1/auth/google/callback"),
+		},
+		OpenAI: OpenAIConfig{
+			APIKey: getEnv("OPENAI_API_KEY", ""),
 		},
 	}
 

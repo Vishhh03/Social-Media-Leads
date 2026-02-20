@@ -53,6 +53,25 @@ type Store interface {
 	GetAutomationsByUser(ctx context.Context, userID int64) ([]models.Automation, error)
 	UpdateAutomation(ctx context.Context, a *models.Automation) error
 	DeleteAutomation(ctx context.Context, automationID, userID int64) error
+
+	// Knowledge Base (RAG)
+	CreateKnowledgeBaseEntry(ctx context.Context, entry *models.KnowledgeBase, embedding []float32) error
+	GetKnowledgeBaseEntriesByUser(ctx context.Context, userID int64) ([]models.KnowledgeBase, error)
+	SearchKnowledgeBase(ctx context.Context, userID int64, queryEmbedding []float32, limit int) ([]models.KnowledgeBase, error)
+	DeleteKnowledgeBaseEntry(ctx context.Context, entryID, userID int64) error
+
+	// Workflows
+	CreateWorkflow(ctx context.Context, w *models.Workflow) error
+	GetWorkflowByID(ctx context.Context, workflowID int64) (*models.Workflow, error)
+	GetWorkflowsByUser(ctx context.Context, userID int64) ([]models.Workflow, error)
+	GetActiveWorkflowsByTrigger(ctx context.Context, userID int64, triggerType string) ([]models.Workflow, error)
+	UpdateWorkflow(ctx context.Context, w *models.Workflow) error
+	DeleteWorkflow(ctx context.Context, workflowID, userID int64) error
+
+	// Workflow Executions
+	CreateWorkflowExecution(ctx context.Context, exec *models.WorkflowExecution) error
+	GetWorkflowExecutionByID(ctx context.Context, executionID int64) (*models.WorkflowExecution, error)
+	UpdateWorkflowExecution(ctx context.Context, exec *models.WorkflowExecution) error
 }
 
 // Ensure Storage implements Store at compile time.

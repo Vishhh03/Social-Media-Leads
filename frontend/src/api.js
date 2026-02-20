@@ -159,3 +159,11 @@ export async function createBroadcast(data) {
 export async function sendBroadcast(id) {
     return request(`/broadcasts/${id}/send`, { method: 'POST' });
 }
+
+// ---- AI Workflows ----
+export async function generateWorkflow(prompt) {
+    return request('/workflows/generate', {
+        method: 'POST',
+        body: JSON.stringify({ prompt }),
+    });
+}

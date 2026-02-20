@@ -8,6 +8,7 @@ const navItems = [
     { to: '/automations', label: 'Automations', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg> },
     { to: '/channels', label: 'Channels', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg> },
     { to: '/broadcasts', label: 'Broadcasts', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 2L11 13" /><path d="M22 2L15 22l-4-9-9-4z" /></svg> },
+    { to: '/workflows', label: 'AI Workflows', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 7V4h16v3H4z" /><path d="M9 11v10H4V11h5z" /><path d="M20 11v10h-5V11h5z" /><path d="M9 16h6" /></svg> },
 ]
 
 export default function Layout() {

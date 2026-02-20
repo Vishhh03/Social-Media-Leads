@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # ---- PostgreSQL ----
+  # ---- PostgreSQL with pgvector ----
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-leadbot}
