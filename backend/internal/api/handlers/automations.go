@@ -11,7 +11,7 @@ import (
 
 // AutomationHandler handles automation rule endpoints.
 type AutomationHandler struct {
-	Store *store.Storage
+	Store store.Store
 }
 
 // CreateAutomationRequest is the expected body for creating an automation.

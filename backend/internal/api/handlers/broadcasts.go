@@ -16,7 +16,7 @@ import (
 
 // BroadcastHandler handles broadcast messaging endpoints.
 type BroadcastHandler struct {
-	Store      *store.Storage
+	Store      store.Store
 	MetaClient *meta.Client
 	Redis      *cache.RedisClient
 }

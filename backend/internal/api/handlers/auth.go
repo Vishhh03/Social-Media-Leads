@@ -12,7 +12,7 @@ import (
 
 // AuthHandler handles authentication endpoints.
 type AuthHandler struct {
-	Store     *store.Storage
+	Store     store.Store
 	JWTSecret string
 }
 

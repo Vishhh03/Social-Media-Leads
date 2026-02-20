@@ -13,7 +13,7 @@ import (
 
 // InboxHandler handles unified inbox endpoints.
 type InboxHandler struct {
-	Store      *store.Storage
+	Store      store.Store
 	MetaClient *meta.Client
 }
 

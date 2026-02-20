@@ -14,7 +14,7 @@ import (
 
 // ChannelHandler handles channel management endpoints.
 type ChannelHandler struct {
-	Store          *store.Storage
+	Store          store.Store
 	TokenRefresher *meta.TokenRefresher
 }
 

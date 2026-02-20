@@ -21,14 +21,14 @@ import (
 
 // OAuthHandler handles OAuth2 authentication flows.
 type OAuthHandler struct {
-	Store       *store.Storage
+	Store       store.Store
 	JWTSecret   string
 	GoogleCfg   *oauth2.Config
 	FrontendURL string
 }
 
 // NewOAuthHandler creates a new OAuthHandler with Google config.
-func NewOAuthHandler(storage *store.Storage, jwtSecret, googleClientID, googleClientSecret, redirectURL, frontendURL string) *OAuthHandler {
+func NewOAuthHandler(storage store.Store, jwtSecret, googleClientID, googleClientSecret, redirectURL, frontendURL string) *OAuthHandler {
 	var googleCfg *oauth2.Config
 	if googleClientID != "" && googleClientSecret != "" {
 		googleCfg = &oauth2.Config{

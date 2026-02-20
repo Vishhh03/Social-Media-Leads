@@ -11,7 +11,7 @@ import (
 )
 
 // SetupRouter creates and configures the Gin engine with all routes.
-func SetupRouter(cfg *config.Config, storage *store.Storage, redisClient *cache.RedisClient) *gin.Engine {
+func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.RedisClient) *gin.Engine {
 	gin.SetMode(cfg.GinMode)
 	r := gin.Default()
 

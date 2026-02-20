@@ -17,7 +17,7 @@ import (
 
 // WebhookHandler handles Meta platform webhook events.
 type WebhookHandler struct {
-	Store      *store.Storage
+	Store      store.Store
 	Config     *config.Config
 	MetaClient *meta.Client
 }

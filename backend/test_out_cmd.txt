@@ -1,0 +1,21 @@
+=== RUN   TestAuthLogin
+=== RUN   TestAuthLogin/Valid_credentials
+[GIN] 2026/02/20 - 21:11:44 | 403 |     56.7719ms |       192.0.2.1 | POST     "/api/v1/auth/login"
+    auth_test.go:100: expected status 200, got 403
+    auth_test.go:111: Expected token in response, got: map[error:Account is deactivated]
+=== RUN   TestAuthLogin/Invalid_password
+[GIN] 2026/02/20 - 21:11:44 | 401 |     58.8463ms |       192.0.2.1 | POST     "/api/v1/auth/login"
+    auth_test.go:116: expected response to contain "Invalid credentials", but got "{\"error\":\"Invalid email or password\"}"
+=== RUN   TestAuthLogin/User_not_found
+[GIN] 2026/02/20 - 21:11:44 | 401 |            0s |       192.0.2.1 | POST     "/api/v1/auth/login"
+    auth_test.go:116: expected response to contain "Invalid credentials", but got "{\"error\":\"Invalid email or password\"}"
+=== RUN   TestAuthLogin/Missing_fields
+[GIN] 2026/02/20 - 21:11:44 | 400 |            0s |       192.0.2.1 | POST     "/api/v1/auth/login"
+--- FAIL: TestAuthLogin (0.18s)
+    --- FAIL: TestAuthLogin/Valid_credentials (0.06s)
+    --- FAIL: TestAuthLogin/Invalid_password (0.06s)
+    --- FAIL: TestAuthLogin/User_not_found (0.00s)
+    --- PASS: TestAuthLogin/Missing_fields (0.00s)
+FAIL
+FAIL	github.com/social-media-lead/backend/internal/api/handlers	0.533s
+FAIL
