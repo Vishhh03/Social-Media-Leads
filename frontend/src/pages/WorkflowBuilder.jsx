@@ -13,7 +13,7 @@ import '@xyflow/react/dist/style.css';
 import { TriggerNode } from '../components/workflow/TriggerNode';
 import { ActionNode } from '../components/workflow/ActionNode';
 import { AINode } from '../components/workflow/AINode';
-import { generateWorkflow } from '../api';
+import { generateWorkflow, createWorkflow, updateWorkflow } from '../api';
 
 const nodeTypes = {
     trigger_meta_dm: TriggerNode,
@@ -59,6 +59,37 @@ export default function WorkflowBuilder() {
         }
     }
 
+    const [isSaving, setIsSaving] = useState(false);
+    const [workflowId, setWorkflowId] = useState(null);
+
+    const handleSaveWorkflow = async () => {
+        setIsSaving(true);
+        try {
+            const payload = {
+                name: "My AI Workflow",
+                trigger_type: "trigger_meta_dm",
+                status: "published",
+                prompt: prompt,
+                nodes: nodes,
+                edges: edges
+            };
+
+            if (workflowId) {
+                await updateWorkflow(workflowId, payload);
+                alert("Workflow updated successfully!");
+            } else {
+                const saved = await createWorkflow(payload);
+                setWorkflowId(saved.id);
+                alert("Workflow saved successfully!");
+            }
+        } catch (err) {
+            console.error("Failed to save workflow:", err);
+            alert("Error saving workflow: " + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     console.log("WorkflowBuilder Rendering:");
     console.log("Nodes ->", nodes);
     console.log("Edges ->", edges);
@@ -84,8 +115,12 @@ export default function WorkflowBuilder() {
                             {isGenerating ? "✨ Generating..." : "✨ Generate"}
                         </button>
                     </div>
-                    <button className="btn btn-primary" style={{ backgroundColor: 'var(--success)', borderColor: 'var(--success)' }}>
-                        Save Workflow
+                    <button
+                        onClick={handleSaveWorkflow}
+                        disabled={isSaving}
+                        className="btn btn-primary"
+                        style={{ backgroundColor: 'var(--success)', borderColor: 'var(--success)' }}>
+                        {isSaving ? "Saving..." : "Save Workflow"}
                     </button>
                 </div>
 

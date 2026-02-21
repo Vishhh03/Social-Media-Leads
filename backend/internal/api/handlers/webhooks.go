@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/social-media-lead/backend/internal/config"
+	"github.com/social-media-lead/backend/internal/engine"
 	"github.com/social-media-lead/backend/internal/meta"
 	"github.com/social-media-lead/backend/internal/models"
 	"github.com/social-media-lead/backend/internal/store"
@@ -17,9 +18,10 @@ import (
 
 // WebhookHandler handles Meta platform webhook events.
 type WebhookHandler struct {
-	Store      store.Store
-	Config     *config.Config
-	MetaClient *meta.Client
+	Store       store.Store
+	Config      *config.Config
+	MetaClient  *meta.Client
+	GraphWalker *engine.GraphWalker
 }
 
 // VerifyWebhook handles the GET request from Meta to verify the webhook URL.
@@ -270,8 +272,38 @@ func (h *WebhookHandler) storeIncomingMessage(platform, accountID, senderID, sen
 
 	log.Printf("[Webhook] ✅ Stored message #%d from contact #%d (user #%d)", msg.ID, contact.ID, channel.UserID)
 
-	// 4. Check for automation triggers
+	// 4. Trigger the new Workflow DAG Orchestrator
+	h.triggerWorkflows(ctx, channel, contact, content)
+
+	// Legacy automation triggers
 	h.checkAutomationTriggers(ctx, channel, contact, content)
+}
+
+// triggerWorkflows executes any active DAG workflow matching the meta_dm_received trigger
+func (h *WebhookHandler) triggerWorkflows(ctx context.Context, channel *models.Channel, contact *models.Contact, content string) {
+	workflows, err := h.Store.GetActiveWorkflowsByTrigger(ctx, channel.UserID, "trigger_meta_dm")
+	if err != nil {
+		log.Printf("[Webhook] Failed to fetch active workflows: %v", err)
+		return
+	}
+
+	for _, w := range workflows {
+		log.Printf("[Webhook] Execution Engine starting Workflow %d: '%s'", w.ID, w.Name)
+		
+		initialState := map[string]interface{}{
+			"received_message": content,
+			"platform":         contact.Platform,
+			"contact_name":     contact.Name,
+		}
+		
+		// Run GraphWalker in a separate goroutine so it doesn't block the webhook response
+		go func(workflowID, contactID int64, state map[string]interface{}) {
+			err := h.GraphWalker.StartWorkflow(context.Background(), workflowID, contactID, state)
+			if err != nil {
+				log.Printf("[Engine] Workflow %d execution failed for contact %d: %v", workflowID, contactID, err)
+			}
+		}(w.ID, contact.ID, initialState)
+	}
 }
 
 // checkAutomationTriggers checks if incoming message matches any automation rules

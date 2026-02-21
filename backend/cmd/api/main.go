@@ -10,11 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/joho/godotenv"
 	"github.com/social-media-lead/backend/internal/api"
 	"github.com/social-media-lead/backend/internal/cache"
 	"github.com/social-media-lead/backend/internal/config"
 	"github.com/social-media-lead/backend/internal/store"
+	"github.com/social-media-lead/backend/internal/workers"
 )
 
 func main() {
@@ -59,8 +61,22 @@ func main() {
 		log.Println("✅ Connected to Redis")
 	}
 
+	var asynqClient *asynq.Client
+	var asynqServer *asynq.Server
+	if redisClient != nil {
+		redisAddr := fmt.Sprintf("%s:%s", cfg.Redis.Host, cfg.Redis.Port)
+		asynqClient = asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr, Password: cfg.Redis.Password})
+		defer asynqClient.Close()
+	}
+
 	// Setup the Gin server
-	router := api.SetupRouter(cfg, storage, redisClient)
+	router, graphWalker := api.SetupRouter(cfg, storage, redisClient, asynqClient)
+
+	if asynqClient != nil {
+		redisAddr := fmt.Sprintf("%s:%s", cfg.Redis.Host, cfg.Redis.Port)
+		asynqServer = workers.StartServer(redisAddr, graphWalker)
+		defer asynqServer.Stop()
+	}
 
 	addr := fmt.Sprintf(":%s", cfg.AppPort)
 	srv := &http.Server{

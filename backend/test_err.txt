@@ -1,0 +1,12 @@
+# github.com/social-media-lead/backend/internal/api/handlers [github.com/social-media-lead/backend/internal/api/handlers.test]
+internal\api\handlers\webhooks_internal_test.go:4:2: "bytes" imported and not used
+internal\api\handlers\webhooks_internal_test.go:5:2: "encoding/json" imported and not used
+internal\api\handlers\webhooks_internal_test.go:6:2: "net/http" imported and not used
+internal\api\handlers\webhooks_internal_test.go:7:2: "net/http/httptest" imported and not used
+internal\api\handlers\webhooks_internal_test.go:9:2: "time" imported and not used
+internal\api\handlers\webhooks_internal_test.go:11:2: "github.com/gin-gonic/gin" imported and not used
+internal\api\handlers\webhooks_internal_test.go:18:2: undefined: MockStore
+internal\api\handlers\webhooks_internal_test.go:25:2: undefined: store
+internal\api\handlers\webhooks_internal_test.go:30:2: declared and not used: cfg
+FAIL	github.com/social-media-lead/backend/internal/api/handlers [build failed]
+FAIL

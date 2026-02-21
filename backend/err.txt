@@ -1,0 +1,4 @@
+# github.com/social-media-lead/backend/internal/api/handlers_test [github.com/social-media-lead/backend/internal/api/handlers.test]
+internal\api\handlers\auth_test.go:40:14: cannot use mockStore (variable of type *MockStore) as store.Store value in struct literal: *MockStore does not implement store.Store (missing method CreateKnowledgeBaseEntry)
+FAIL	github.com/social-media-lead/backend/internal/api/handlers [build failed]
+FAIL

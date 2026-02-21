@@ -2,17 +2,19 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/hibiken/asynq"
 	"github.com/social-media-lead/backend/internal/ai"
 	"github.com/social-media-lead/backend/internal/api/handlers"
 	"github.com/social-media-lead/backend/internal/api/middleware"
 	"github.com/social-media-lead/backend/internal/cache"
 	"github.com/social-media-lead/backend/internal/config"
+	"github.com/social-media-lead/backend/internal/engine"
 	"github.com/social-media-lead/backend/internal/meta"
 	"github.com/social-media-lead/backend/internal/store"
 )
 
 // SetupRouter creates and configures the Gin engine with all routes.
-func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.RedisClient) *gin.Engine {
+func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.RedisClient, asynqClient *asynq.Client) (*gin.Engine, *engine.GraphWalker) {
 	gin.SetMode(cfg.GinMode)
 	r := gin.Default()
 
@@ -48,6 +50,10 @@ func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.Red
 	metaClient := meta.NewClient()
 	tokenRefresher := meta.NewTokenRefresher(cfg.Meta.AppID, cfg.Meta.AppSecret, redisClient)
 
+	// AI Orchestrator Client & DAG Engine
+	llmClient := ai.NewOpenAIClient(cfg.OpenAI.APIKey, "")
+	graphWalker := engine.NewGraphWalker(storage, llmClient, asynqClient, metaClient)
+
 	// Initialize handlers
 	authHandler := &handlers.AuthHandler{Store: storage, JWTSecret: cfg.JWT.Secret}
 	oauthHandler := handlers.NewOAuthHandler(
@@ -55,14 +61,12 @@ func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.Red
 		cfg.Google.ClientID, cfg.Google.ClientSecret, cfg.Google.RedirectURL,
 		cfg.FrontendURL,
 	)
-	webhookHandler := &handlers.WebhookHandler{Store: storage, Config: cfg, MetaClient: metaClient}
+	webhookHandler := &handlers.WebhookHandler{Store: storage, Config: cfg, MetaClient: metaClient, GraphWalker: graphWalker}
 	inboxHandler := &handlers.InboxHandler{Store: storage, MetaClient: metaClient}
 	automationHandler := &handlers.AutomationHandler{Store: storage}
 	channelHandler := &handlers.ChannelHandler{Store: storage, TokenRefresher: tokenRefresher}
 	broadcastHandler := &handlers.BroadcastHandler{Store: storage, MetaClient: metaClient, Redis: redisClient}
-
-	// AI Orchestrator Client
-	llmClient := ai.NewOpenAIClient(cfg.OpenAI.APIKey, "")
+	workflowHandler := &handlers.WorkflowHandler{Store: storage}
 	aiHandler := &handlers.AIHandler{LLMClient: llmClient}
 
 	// --- Public Routes ---
@@ -130,9 +134,14 @@ func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.Red
 		// Workflows
 		workflows := protected.Group("/workflows")
 		{
+			workflows.GET("", workflowHandler.ListWorkflows)
+			workflows.POST("", workflowHandler.CreateWorkflow)
+			workflows.GET("/:id", workflowHandler.GetWorkflow)
+			workflows.PUT("/:id", workflowHandler.UpdateWorkflow)
+			workflows.DELETE("/:id", workflowHandler.DeleteWorkflow)
 			workflows.POST("/generate", aiHandler.GenerateWorkflow)
 		}
 	}
 
-	return r
+	return r, graphWalker
 }

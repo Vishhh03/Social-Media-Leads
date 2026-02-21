@@ -5,22 +5,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/social-media-lead/backend/internal/ai"
+	"github.com/social-media-lead/backend/internal/meta"
 	"github.com/social-media-lead/backend/internal/models"
 	"github.com/social-media-lead/backend/internal/store"
 )
 
 // GraphWalker is responsible for traversing a Workflow DAG and executing node logic
 type GraphWalker struct {
-	Store     store.Store
-	LLMClient ai.LLMClient
+	Store       store.Store
+	LLMClient   ai.LLMClient
+	AsynqClient *asynq.Client
+	MetaClient  *meta.Client
 }
 
-func NewGraphWalker(store store.Store, llmClient ai.LLMClient) *GraphWalker {
+func NewGraphWalker(store store.Store, llmClient ai.LLMClient, asynqClient *asynq.Client, metaClient *meta.Client) *GraphWalker {
 	return &GraphWalker{
-		Store:     store,
-		LLMClient: llmClient,
+		Store:       store,
+		LLMClient:   llmClient,
+		AsynqClient: asynqClient,
+		MetaClient:  metaClient,
 	}
 }
 
@@ -132,8 +139,27 @@ func (gw *GraphWalker) ResumeExecution(ctx context.Context, executionID int64) e
 			exec.CurrentNodeID = nextNodeID
 			gw.Store.UpdateWorkflowExecution(ctx, exec)
 			
-			// TODO: Phase 4 - Schedule Asynq worker using the configured delay
-			log.Printf("Execution %d paused at Delay node %s. Will resume at %s", executionID, node.ID, nextNodeID)
+			// Schedule Asynq worker using the configured delay
+			delayDuration := 1 * time.Minute // default 1 minute
+			if val, ok := node.Data["delayMs"]; ok {
+				if ms, ok := val.(float64); ok {
+					delayDuration = time.Duration(ms) * time.Millisecond
+				}
+			}
+
+			payload, _ := json.Marshal(map[string]int64{"execution_id": executionID})
+			task := asynq.NewTask("workflow:resume", payload)
+
+			log.Printf("Execution %d paused at Delay node %s. Target resume in %v", executionID, node.ID, delayDuration)
+
+			if gw.AsynqClient != nil {
+				_, err := gw.AsynqClient.Enqueue(task, asynq.ProcessIn(delayDuration))
+				if err != nil {
+					log.Printf("ERROR: Failed to enqueue resume task for execution %d: %v", executionID, err)
+				}
+			} else {
+				log.Printf("WARNING: AsynqClient is nil, execution %d is permanently stalled.", executionID)
+			}
 			return nil
 		}
 
@@ -153,12 +179,16 @@ func (gw *GraphWalker) processNode(ctx context.Context, node *models.ReactFlowNo
 		return gw.findNextNode(graph.Edges, node.ID, ""), nil
 
 	case models.NodeTypeActionSendMessage:
-		// Send a message using Meta API (Mocked for now)
+		// Send a message using Meta API
 		msg := "Hello!"
 		if val, ok := node.Data["message"]; ok {
 			msg = val.(string)
 		}
-		log.Printf("[Meta API] Sending message to Contact %d: %s", exec.ContactID, msg)
+		
+		if err := gw.sendMetaMessage(ctx, exec.ContactID, msg); err != nil {
+			log.Printf("[GraphWalker] Failed to send static message: %v", err)
+		}
+		
 		return gw.findNextNode(graph.Edges, node.ID, ""), nil
 		
 	case models.NodeTypeActionAIReply:
@@ -182,7 +212,10 @@ func (gw *GraphWalker) processNode(ctx context.Context, node *models.ReactFlowNo
 			return "", err
 		}
 		
-		log.Printf("[Meta API -> AI] Sending generated reply to Contact %d: %s", exec.ContactID, reply)
+		if err := gw.sendMetaMessage(ctx, exec.ContactID, reply); err != nil {
+			log.Printf("[GraphWalker] Failed to send AI reply: %v", err)
+		}
+
 		return gw.findNextNode(graph.Edges, node.ID, ""), nil
 
 	case models.NodeTypeActionDelay:
@@ -207,6 +240,54 @@ func (gw *GraphWalker) findNextNode(edges []models.ReactFlowEdge, sourceNodeID, 
 		}
 	}
 	return ""
+}
+
+func (gw *GraphWalker) sendMetaMessage(ctx context.Context, contactID int64, msg string) error {
+	contact, err := gw.Store.GetContactByID(ctx, contactID)
+	if err != nil {
+		return fmt.Errorf("failed to get contact: %w", err)
+	}
+
+	channel, err := gw.Store.GetChannelByID(ctx, contact.ChannelID)
+	if err != nil {
+		return fmt.Errorf("failed to get channel: %w", err)
+	}
+
+	result, err := gw.MetaClient.SendMessage(
+		contact.Platform,
+		channel.AccountID,
+		contact.PlatformUserID,
+		msg,
+		channel.AccessToken,
+	)
+	if err != nil {
+		return fmt.Errorf("MetaClient.SendMessage error: %w", err)
+	}
+
+	if !result.Success {
+		return fmt.Errorf("MetaClient API returned error: %s", result.Error)
+	}
+
+	// Store the outbound message in the database for history
+	outMsg := &models.Message{
+		UserID:        channel.UserID,
+		ChannelID:     channel.ID,
+		ContactID:     contact.ID,
+		Platform:      contact.Platform,
+		Direction:     "outbound",
+		Content:       msg,
+		MessageType:   "text",
+		PlatformMsgID: result.MessageID,
+		Status:        "sent",
+		IsAutomated:   true,
+	}
+
+	if err := gw.Store.CreateMessage(ctx, outMsg); err != nil {
+		log.Printf("[GraphWalker] Warning: Failed to store auto-reply message history: %v", err)
+	}
+
+	log.Printf("[Meta API] Successfully sent and stored message to Contact %d", contactID)
+	return nil
 }
 
 func findNode(nodes []models.ReactFlowNode, nodeID string) *models.ReactFlowNode {

@@ -167,3 +167,25 @@ export async function generateWorkflow(prompt) {
         body: JSON.stringify({ prompt }),
     });
 }
+
+export async function getWorkflows() {
+    return request('/workflows');
+}
+
+export async function createWorkflow(data) {
+    return request('/workflows', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function updateWorkflow(id, data) {
+    return request(`/workflows/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteWorkflow(id) {
+    return request(`/workflows/${id}`, { method: 'DELETE' });
+}

@@ -120,3 +120,64 @@ func TestAuthLogin(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthSignup(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mockStore := NewMockStore()
+
+	handler := &handlers.AuthHandler{
+		Store:     mockStore,
+		JWTSecret: "super_secret_test_key",
+	}
+
+	r := gin.Default()
+	r.POST("/api/v1/auth/signup", handler.Signup)
+
+	tests := []struct {
+		name           string
+		payload        map[string]interface{}
+		expectedStatus int
+	}{
+		{
+			name: "Valid signup",
+			payload: map[string]interface{}{
+				"email":     "new@example.com",
+				"password":  "password123",
+				"full_name": "New User",
+			},
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name: "Missing required fields",
+			payload: map[string]interface{}{
+				"email": "new@example.com",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Short password",
+			payload: map[string]interface{}{
+				"email":     "new@example.com",
+				"password":  "short",
+				"full_name": "New User",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			body, _ := json.Marshal(tc.payload)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/signup", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expectedStatus {
+				t.Errorf("expected status %v, got %v", tc.expectedStatus, w.Code)
+			}
+		})
+	}
+}
+
