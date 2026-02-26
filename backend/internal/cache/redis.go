@@ -165,3 +165,52 @@ func (r *RedisClient) LogEvent(ctx context.Context, eventType string, userID int
 	}
 	r.Client.Expire(ctx, key, 48*time.Hour)
 }
+
+// ---- Property Visit Booking ----
+
+// ReserveSlot attempts to lock a time slot for a specific project.
+// Returns true if successfully reserved, false if already taken.
+func (r *RedisClient) ReserveSlot(ctx context.Context, project string, visitTime time.Time, contactID int64, ttl time.Duration) (bool, error) {
+	key := fmt.Sprintf("slot_reserved:%s:%d", project, visitTime.Unix())
+	return r.Client.SetNX(ctx, key, contactID, ttl).Result()
+}
+
+// ReleaseSlot explicitly frees a locked time slot (e.g., if booking fails or user cancels).
+func (r *RedisClient) ReleaseSlot(ctx context.Context, project string, visitTime time.Time) error {
+	key := fmt.Sprintf("slot_reserved:%s:%d", project, visitTime.Unix())
+	return r.Client.Del(ctx, key).Err()
+}
+
+// ---- Webhook Idempotency ----
+
+// MarkWebhookProcessed ensures we don't process the exact same message from Meta twice.
+// Returns true if it's the first time seeing this message ID.
+func (r *RedisClient) MarkWebhookProcessed(ctx context.Context, messageID string) (bool, error) {
+	// Store for 24 hours to prevent duplicate processing
+	key := fmt.Sprintf("webhook_processed:%s", messageID)
+	return r.Client.SetNX(ctx, key, "1", 24*time.Hour).Result()
+}
+
+// ---- Property Visit Config Cache ----
+
+// CacheVisitConfig stores a serialised PropertyVisitConfig in Redis for fast webhook access.
+func (r *RedisClient) CacheVisitConfig(ctx context.Context, userID int64, data []byte) error {
+	key := fmt.Sprintf("visit_config:%d", userID)
+	return r.Client.Set(ctx, key, data, 10*time.Minute).Err()
+}
+
+// GetCachedVisitConfig retrieves the cached config bytes. Returns nil, nil if cache miss.
+func (r *RedisClient) GetCachedVisitConfig(ctx context.Context, userID int64) ([]byte, error) {
+	key := fmt.Sprintf("visit_config:%d", userID)
+	data, err := r.Client.Get(ctx, key).Bytes()
+	if err != nil {
+		return nil, nil // treat miss as no error — caller will load from DB
+	}
+	return data, nil
+}
+
+// InvalidateVisitConfig removes the cached config (call on wizard save).
+func (r *RedisClient) InvalidateVisitConfig(ctx context.Context, userID int64) error {
+	key := fmt.Sprintf("visit_config:%d", userID)
+	return r.Client.Del(ctx, key).Err()
+}

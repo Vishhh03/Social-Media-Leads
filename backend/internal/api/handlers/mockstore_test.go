@@ -64,6 +64,15 @@ func (m *MockStore) GetOrCreateContact(ctx context.Context, c *models.Contact) e
 func (m *MockStore) GetContactsByUser(ctx context.Context, userID int64, limit, offset int) ([]models.Contact, error) { return nil, nil }
 func (m *MockStore) UpdateContactLead(ctx context.Context, contactID int64, budget, location, timeline, phone string, isHot bool) error { return nil }
 func (m *MockStore) GetContactByID(ctx context.Context, contactID int64) (*models.Contact, error) { return nil, nil }
+func (m *MockStore) UpdateContactState(ctx context.Context, contactID int64, bookingState string, botPaused bool) error { return nil }
+func (m *MockStore) CreateVisit(ctx context.Context, v *models.Visit) error { return nil }
+func (m *MockStore) GetVisitsByUser(ctx context.Context, userID int64, limit, offset int) ([]models.Visit, error) { return nil, nil }
+func (m *MockStore) GetVisitByContact(ctx context.Context, contactID int64) (*models.Visit, error) { return nil, nil }
+func (m *MockStore) UpdateVisitStatus(ctx context.Context, visitID int64, status string) error { return nil }
+func (m *MockStore) UpsertPropertyVisitConfig(ctx context.Context, cfg *models.PropertyVisitConfig) error { return nil }
+func (m *MockStore) GetPropertyVisitConfig(ctx context.Context, userID int64) (*models.PropertyVisitConfig, error) {
+	return &models.PropertyVisitConfig{UserID: userID, ProjectName: "Test Project", BrochureURL: "https://example.com", AgentPhone: "+1234", IsActive: true}, nil
+}
 func (m *MockStore) CreateChannel(ctx context.Context, ch *models.Channel) error { return nil }
 func (m *MockStore) GetChannelsByUser(ctx context.Context, userID int64) ([]models.Channel, error) { return nil, nil }
 func (m *MockStore) GetChannelByAccountID(ctx context.Context, platform, accountID string) (*models.Channel, error) { 

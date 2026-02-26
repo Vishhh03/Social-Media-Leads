@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
 import { isAuthenticated } from './api';
 import Layout from './components/Layout';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
@@ -13,6 +14,7 @@ import Broadcasts from './pages/Broadcasts';
 import Settings from './pages/Settings';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import OAuthCallback from './pages/OAuthCallback';
+import TemplateWizard from './pages/TemplateWizard';
 
 function ProtectedRoute({ children }) {
     return isAuthenticated() ? children : <Navigate to="/login" />;
@@ -26,7 +28,8 @@ export default function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/oauth/callback" element={<OAuthCallback />} />
-                    <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                         <Route index element={<Dashboard />} />
                         <Route path="inbox" element={<Inbox />} />
                         <Route path="contacts" element={<Contacts />} />
@@ -35,6 +38,7 @@ export default function App() {
                         <Route path="broadcasts" element={<Broadcasts />} />
                         <Route path="workflows" element={<WorkflowBuilder />} />
                         <Route path="settings" element={<Settings />} />
+                        <Route path="template-wizard" element={<TemplateWizard />} />
                     </Route>
                 </Routes>
             </BrowserRouter>

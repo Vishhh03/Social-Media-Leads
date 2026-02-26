@@ -31,6 +31,17 @@ type LoginRequest struct {
 }
 
 // Signup creates a new user account.
+// @Summary Create a new user account
+// @Description Register a new user with email, password, full name, and optional company name
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body SignupRequest true "Signup details"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /auth/signup [post]
 func (h *AuthHandler) Signup(c *gin.Context) {
 	var req SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -78,6 +89,18 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 }
 
 // Login authenticates a user and returns a JWT.
+// @Summary Login user
+// @Description Authenticate user with email and password and return JWT token
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login credentials"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -121,6 +144,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 // Me returns the current authenticated user's profile.
+// @Summary Get current user profile
+// @Description Get profile details for the currently authenticated user
+// @Tags Profile
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]string
+// @Router /me [get]
 func (h *AuthHandler) Me(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	user, err := h.Store.GetUserByID(c.Request.Context(), userID.(int64))

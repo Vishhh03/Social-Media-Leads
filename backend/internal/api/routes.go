@@ -11,6 +11,9 @@ import (
 	"github.com/social-media-lead/backend/internal/engine"
 	"github.com/social-media-lead/backend/internal/meta"
 	"github.com/social-media-lead/backend/internal/store"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "github.com/social-media-lead/backend/docs"
 )
 
 // SetupRouter creates and configures the Gin engine with all routes.
@@ -46,6 +49,9 @@ func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.Red
 		})
 	})
 
+	// Swagger documentation
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	// Initialize Meta API client + token refresher
 	metaClient := meta.NewClient()
 	tokenRefresher := meta.NewTokenRefresher(cfg.Meta.AppID, cfg.Meta.AppSecret, redisClient)
@@ -61,13 +67,14 @@ func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.Red
 		cfg.Google.ClientID, cfg.Google.ClientSecret, cfg.Google.RedirectURL,
 		cfg.FrontendURL,
 	)
-	webhookHandler := &handlers.WebhookHandler{Store: storage, Config: cfg, MetaClient: metaClient, GraphWalker: graphWalker}
+	webhookHandler := &handlers.WebhookHandler{Store: storage, Config: cfg, MetaClient: metaClient, GraphWalker: graphWalker, Cache: redisClient}
 	inboxHandler := &handlers.InboxHandler{Store: storage, MetaClient: metaClient}
 	automationHandler := &handlers.AutomationHandler{Store: storage}
 	channelHandler := &handlers.ChannelHandler{Store: storage, TokenRefresher: tokenRefresher}
 	broadcastHandler := &handlers.BroadcastHandler{Store: storage, MetaClient: metaClient, Redis: redisClient}
 	workflowHandler := &handlers.WorkflowHandler{Store: storage}
 	aiHandler := &handlers.AIHandler{LLMClient: llmClient}
+	propertyVisitHandler := &handlers.PropertyVisitHandler{Store: storage, Cache: redisClient}
 
 	// --- Public Routes ---
 	v1 := r.Group("/api/v1")
@@ -140,6 +147,13 @@ func SetupRouter(cfg *config.Config, storage store.Store, redisClient *cache.Red
 			workflows.PUT("/:id", workflowHandler.UpdateWorkflow)
 			workflows.DELETE("/:id", workflowHandler.DeleteWorkflow)
 			workflows.POST("/generate", aiHandler.GenerateWorkflow)
+		}
+
+		// Property Visit System (Wizard Activation)
+		pv := protected.Group("/property-visit")
+		{
+			pv.POST("/activate", propertyVisitHandler.Activate)
+			pv.GET("/config", propertyVisitHandler.GetConfig)
 		}
 	}
 

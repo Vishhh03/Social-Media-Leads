@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/social-media-lead/backend/internal/cache"
 	"github.com/social-media-lead/backend/internal/config"
 	"github.com/social-media-lead/backend/internal/engine"
 	"github.com/social-media-lead/backend/internal/meta"
@@ -22,6 +24,7 @@ type WebhookHandler struct {
 	Config      *config.Config
 	MetaClient  *meta.Client
 	GraphWalker *engine.GraphWalker
+	Cache       *cache.RedisClient
 }
 
 // VerifyWebhook handles the GET request from Meta to verify the webhook URL.
@@ -226,6 +229,17 @@ func (h *WebhookHandler) storeIncomingMessage(platform, accountID, senderID, sen
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
+	// 0. Idempotency Check
+	if h.Cache != nil && platformMsgID != "" {
+		isNew, err := h.Cache.MarkWebhookProcessed(ctx, platformMsgID)
+		if err != nil {
+			log.Printf("[Webhook] Redis error checking idempotency: %v", err)
+		} else if !isNew {
+			log.Printf("[Webhook] Ignored duplicate message: %s", platformMsgID)
+			return
+		}
+	}
+
 	// 1. Resolve which user owns this account by looking up the channel
 	channel, err := h.Store.GetChannelByAccountID(ctx, platform, accountID)
 	if err != nil {
@@ -272,12 +286,184 @@ func (h *WebhookHandler) storeIncomingMessage(platform, accountID, senderID, sen
 
 	log.Printf("[Webhook] ✅ Stored message #%d from contact #%d (user #%d)", msg.ID, contact.ID, channel.UserID)
 
-	// 4. Trigger the new Workflow DAG Orchestrator
+	// 4. Handle Property Visit Q&A Flow
+	if h.processVisitBookingFlow(ctx, channel, contact, content) {
+		// If flow handled it, skip generic workflow orchestrator
+		return
+	}
+
+	// 5. Trigger the new Workflow DAG Orchestrator
 	h.triggerWorkflows(ctx, channel, contact, content)
 
 	// Legacy automation triggers
 	h.checkAutomationTriggers(ctx, channel, contact, content)
 }
+
+// processVisitBookingFlow runs the Property Visit state machine logic.
+// Returns true if the flow sent an automated reply.
+func (h *WebhookHandler) processVisitBookingFlow(ctx context.Context, channel *models.Channel, contact *models.Contact, content string) bool {
+	// Escape Hatch: If agent replied manually recently, bot is paused.
+	if contact.BotPaused {
+		log.Printf("[BookingFlow] Interaction skipped for contact %d (Bot Paused by Agent)", contact.ID)
+		return false
+	}
+
+	// ---- Load tenant config (Redis → Postgres fallback) ----
+	cfg := h.loadTenantConfig(ctx, channel.UserID)
+	if cfg == nil {
+		// No wizard set up yet for this user — skip booking flow entirely
+		log.Printf("[BookingFlow] No config for user %d — skipping booking flow", channel.UserID)
+		return false
+	}
+
+	contentLower := strings.ToLower(strings.TrimSpace(content))
+	var reply string
+
+	switch contact.BookingState {
+	case "new", "":
+		reply = fmt.Sprintf("Hi 👋 Thanks for your interest in %s!\n\nAre you looking for:\n1. Self-use\n2. Investment", cfg.ProjectName)
+		contact.BookingState = "qualified"
+
+	case "qualified":
+		if cfg.BrochureURL != "" {
+			reply = fmt.Sprintf("Great choice! Here is the %s brochure: %s\n\nWould you like to schedule a site visit? We have slots tomorrow at 10 AM, 2 PM, or 4 PM. Reply with your preferred time.", cfg.ProjectName, cfg.BrochureURL)
+		} else {
+			reply = fmt.Sprintf("Great! Would you like to schedule a site visit for %s? We have slots tomorrow at 10 AM, 2 PM, or 4 PM. Reply with your preferred time.", cfg.ProjectName)
+		}
+		contact.BookingState = "offered_slots"
+
+	case "offered_slots":
+		slot := ""
+		visitTime := time.Now().AddDate(0, 0, 1)
+		if strings.Contains(contentLower, "10") {
+			slot = "10:00 AM"
+			visitTime = time.Date(visitTime.Year(), visitTime.Month(), visitTime.Day(), 10, 0, 0, 0, visitTime.Location())
+		} else if strings.Contains(contentLower, "2") {
+			slot = "2:00 PM"
+			visitTime = time.Date(visitTime.Year(), visitTime.Month(), visitTime.Day(), 14, 0, 0, 0, visitTime.Location())
+		} else if strings.Contains(contentLower, "4") {
+			slot = "4:00 PM"
+			visitTime = time.Date(visitTime.Year(), visitTime.Month(), visitTime.Day(), 16, 0, 0, 0, visitTime.Location())
+		} else {
+			reply = "I can answer more questions, but to ensure you get the best experience, would you like to book a site visit? We have slots tomorrow at 10 AM, 2 PM, or 4 PM."
+			break
+		}
+
+		// Prevent double booking via Redis TTL lock
+		if h.Cache != nil {
+			locked, err := h.Cache.ReserveSlot(ctx, cfg.ProjectName, visitTime, contact.ID, 5*time.Minute)
+			if err != nil || !locked {
+				reply = fmt.Sprintf("I'm sorry, the %s slot just got taken! Please choose another time: 10 AM, 2 PM, or 4 PM.", slot)
+				break
+			}
+		}
+
+		visit := &models.Visit{
+			UserID:            channel.UserID,
+			ContactID:         contact.ID,
+			ProjectName:       cfg.ProjectName,
+			VisitTime:         visitTime,
+			Status:            "confirmed",
+			LeadSourceChannel: contact.Platform,
+		}
+
+		if err := h.Store.CreateVisit(ctx, visit); err != nil {
+			log.Printf("[BookingFlow] Failed to save visit: %v", err)
+			reply = "There was an error booking your visit. Please hold on, our agent will contact you."
+			contact.BotPaused = true
+		} else {
+			reply = fmt.Sprintf("Perfect! Your visit to %s is confirmed for tomorrow at %s. Our agent will be in touch shortly to confirm details.", cfg.ProjectName, slot)
+			contact.BookingState = "booked"
+			go h.sendAgentNotification(channel, contact, visitTime)
+		}
+
+	case "booked":
+		reply = fmt.Sprintf("Your visit to %s is already confirmed! Our team will be in touch. 🏡", cfg.ProjectName)
+	}
+
+	_ = h.Store.UpdateContactState(ctx, contact.ID, contact.BookingState, contact.BotPaused)
+
+	if reply != "" {
+		h.sendAutoReply(ctx, channel, contact, reply)
+		return true
+	}
+	return false
+}
+
+// loadTenantConfig fetches the wizard config from Redis (10 min TTL) or falls back to Postgres.
+func (h *WebhookHandler) loadTenantConfig(ctx context.Context, userID int64) *models.PropertyVisitConfig {
+	if h.Cache != nil {
+		if data, _ := h.Cache.GetCachedVisitConfig(ctx, userID); len(data) > 0 {
+			var cfg models.PropertyVisitConfig
+			if err := json.Unmarshal(data, &cfg); err == nil {
+				return &cfg
+			}
+		}
+	}
+
+	cfg, err := h.Store.GetPropertyVisitConfig(ctx, userID)
+	if err != nil || cfg == nil {
+		return nil
+	}
+
+	// Populate cache for subsequent webhooks
+	if h.Cache != nil {
+		if data, err := json.Marshal(cfg); err == nil {
+			_ = h.Cache.CacheVisitConfig(ctx, userID, data)
+		}
+	}
+	return cfg
+}
+
+
+func (h *WebhookHandler) sendAutoReply(ctx context.Context, channel *models.Channel, contact *models.Contact, text string) {
+	if h.MetaClient == nil {
+		log.Println("[BookingFlow] MetaClient is nil (test mode), skipping real API call.")
+		return
+	}
+	result, err := h.MetaClient.SendMessage(
+		contact.Platform,
+		channel.AccountID,
+		contact.PlatformUserID,
+		text,
+		channel.AccessToken,
+	)
+	if err != nil || !result.Success {
+		log.Printf("[BookingFlow] Failed to send auto-reply: %v", err)
+		return
+	}
+
+	autoMsg := &models.Message{
+		UserID:        channel.UserID,
+		ChannelID:     channel.ID,
+		ContactID:     contact.ID,
+		Platform:      contact.Platform,
+		Direction:     "outbound",
+		Content:       text,
+		MessageType:   "text",
+		PlatformMsgID: result.MessageID,
+		Status:        "sent",
+		IsAutomated:   true,
+	}
+	_ = h.Store.CreateMessage(ctx, autoMsg)
+}
+
+func (h *WebhookHandler) sendAgentNotification(channel *models.Channel, contact *models.Contact, visitTime time.Time) {
+	// For MVP, structured structured console log format
+	msg := fmt.Sprintf(`
+=========================================
+🔥 New Site Visit Booked
+Project: Project Alpha
+Lead: %s
+Visit: %s
+Open Chat: https://wa.me/%s
+Summary: Intent (Qualified), Time Booked.
+=========================================
+`, contact.Name, visitTime.Format("Jan 02, 3:04 PM"), contact.Phone)
+	
+	log.Println(msg)
+}
+
 
 // triggerWorkflows executes any active DAG workflow matching the meta_dm_received trigger
 func (h *WebhookHandler) triggerWorkflows(ctx context.Context, channel *models.Channel, contact *models.Contact, content string) {

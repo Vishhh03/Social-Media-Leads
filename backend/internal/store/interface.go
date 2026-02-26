@@ -33,7 +33,18 @@ type Store interface {
 	GetOrCreateContact(ctx context.Context, c *models.Contact) error
 	GetContactsByUser(ctx context.Context, userID int64, limit, offset int) ([]models.Contact, error)
 	UpdateContactLead(ctx context.Context, contactID int64, budget, location, timeline, phone string, isHot bool) error
+	UpdateContactState(ctx context.Context, contactID int64, bookingState string, botPaused bool) error
 	GetContactByID(ctx context.Context, contactID int64) (*models.Contact, error)
+
+	// Visits
+	CreateVisit(ctx context.Context, v *models.Visit) error
+	GetVisitsByUser(ctx context.Context, userID int64, limit, offset int) ([]models.Visit, error)
+	GetVisitByContact(ctx context.Context, contactID int64) (*models.Visit, error)
+	UpdateVisitStatus(ctx context.Context, visitID int64, status string) error
+
+	// Property Visit Config (Wizard Output)
+	UpsertPropertyVisitConfig(ctx context.Context, cfg *models.PropertyVisitConfig) error
+	GetPropertyVisitConfig(ctx context.Context, userID int64) (*models.PropertyVisitConfig, error)
 
 	// Channels
 	CreateChannel(ctx context.Context, ch *models.Channel) error

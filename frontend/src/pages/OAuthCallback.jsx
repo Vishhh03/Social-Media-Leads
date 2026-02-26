@@ -15,7 +15,7 @@ export default function OAuthCallback() {
                 const user = JSON.parse(userJSON);
                 localStorage.setItem('token', token);
                 localStorage.setItem('user', JSON.stringify(user));
-                navigate('/', { replace: true });
+                navigate('/dashboard', { replace: true });
             } catch {
                 navigate('/login?error=parse_failed', { replace: true });
             }

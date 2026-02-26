@@ -163,6 +163,15 @@ func (h *InboxHandler) SendMessage(c *gin.Context) {
 		log.Printf("[Inbox] Message sent but failed to save in DB: %v", err)
 	}
 
+	// Agent Escape Hatch: Pause automation since the agent replied manually
+	if !contact.BotPaused {
+		if err := h.Store.UpdateContactState(ctx, contact.ID, contact.BookingState, true); err != nil {
+			log.Printf("[Inbox] Failed to pause bot for contact #%d: %v", contact.ID, err)
+		} else {
+			log.Printf("[Inbox] User #%d manually replied to Contact #%d, Bot is now PAUSED.", userID.(int64), contact.ID)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Message sent",
 		"data": gin.H{

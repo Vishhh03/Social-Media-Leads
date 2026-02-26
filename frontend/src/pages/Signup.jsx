@@ -17,7 +17,7 @@ export default function Signup() {
         setLoading(true);
         try {
             await signup(email, password, fullName, company);
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             toast.error(err.message);
         } finally {

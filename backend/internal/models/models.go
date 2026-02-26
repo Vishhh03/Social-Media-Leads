@@ -47,8 +47,36 @@ type Contact struct {
 	PurchaseTimeline string    `json:"purchase_timeline,omitempty"`
 	Tags             []string  `json:"tags,omitempty"`
 	IsHotLead        bool      `json:"is_hot_lead"`
+	BookingState     string    `json:"booking_state"` // "new", "qualified", "offered_slots", "booked"
+	BotPaused        bool      `json:"bot_paused"`    // Enable agent escape hatch
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// Visit represents a booked property visit
+type Visit struct {
+	ID                int64     `json:"id"`
+	UserID            int64     `json:"user_id"`
+	ContactID         int64     `json:"contact_id"`
+	ProjectName       string    `json:"project_name"`
+	VisitTime         time.Time `json:"visit_time"`
+	Status            string    `json:"status"`              // "confirmed", "rescheduled", "completed", "cancelled"
+	LeadSourceChannel string    `json:"lead_source_channel"` // "ig_dm", "wa_biz"
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+// PropertyVisitConfig stores a tenant's wizard-configured property visit setup.
+// One row per user. Updated each time the wizard is re-activated.
+type PropertyVisitConfig struct {
+	ID           int64     `json:"id"`
+	UserID       int64     `json:"user_id"`
+	ProjectName  string    `json:"project_name"`
+	BrochureURL  string    `json:"brochure_url"`
+	AgentPhone   string    `json:"agent_phone"`
+	IsActive     bool      `json:"is_active"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // Message represents a single chat message.

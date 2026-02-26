@@ -189,3 +189,15 @@ export async function updateWorkflow(id, data) {
 export async function deleteWorkflow(id) {
     return request(`/workflows/${id}`, { method: 'DELETE' });
 }
+
+// ---- Property Visit System ----
+export async function activatePropertyVisit(projectName, brochureUrl, agentPhone) {
+    return request('/property-visit/activate', {
+        method: 'POST',
+        body: JSON.stringify({ project_name: projectName, brochure_url: brochureUrl, agent_phone: agentPhone }),
+    });
+}
+
+export async function getPropertyVisitConfig() {
+    return request('/property-visit/config');
+}
